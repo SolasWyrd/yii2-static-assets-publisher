@@ -9,25 +9,17 @@ use InvalidArgumentException;
 final readonly class StaticAssetsConfiguration
 {
     /**
-     * @param list<string> $scanPaths
-     * @param list<string> $excludedPatterns
-     * @param array<string,string> $hashRoots
+     * @param list<string>          $scanPaths
+     * @param array<string, string> $hashRoots
      */
     public function __construct(
-        public string $projectRoot,
         public string $targetPath,
         public string $allowedBuildRoot,
         public string $baseUrl,
         public array $scanPaths,
-        public array $excludedPatterns,
         public array $hashRoots,
         public string $manifestFileName = 'static-assets-manifest.json',
-        public int $suggestionMinimumPhpFiles = 50,
     ) {
-        if ($projectRoot === '') {
-            throw new InvalidArgumentException('Project root is required.');
-        }
-
         if ($targetPath === '') {
             throw new InvalidArgumentException('Target path is required.');
         }
@@ -50,10 +42,6 @@ final readonly class StaticAssetsConfiguration
 
         if ($manifestFileName === '' || \basename($manifestFileName) !== $manifestFileName) {
             throw new InvalidArgumentException('Manifest file name must be a plain file name.');
-        }
-
-        if ($suggestionMinimumPhpFiles < 1) {
-            throw new InvalidArgumentException('Suggestion minimum PHP files must be positive.');
         }
     }
 

@@ -7,7 +7,6 @@ namespace SolasWyrd\Yii2StaticAssets\Tests\Discovery;
 use PHPUnit\Framework\TestCase;
 use SolasWyrd\Yii2StaticAssets\Configuration\StaticAssetsConfiguration;
 use SolasWyrd\Yii2StaticAssets\Discovery\AstAssetBundleFinder;
-use SolasWyrd\Yii2StaticAssets\Discovery\ExcludedPathMatcher;
 use SolasWyrd\Yii2StaticAssets\Discovery\PhpClassExtractor;
 use SolasWyrd\Yii2StaticAssets\Discovery\PhpFileCollector;
 use SolasWyrd\Yii2StaticAssets\Tests\Fixture\DirectAsset;
@@ -20,17 +19,15 @@ final class AstAssetBundleFinderTest extends TestCase
     {
         $fixturePath = \dirname(__DIR__) . '/Fixture';
         $configuration = new StaticAssetsConfiguration(
-            projectRoot: \dirname(__DIR__),
             targetPath: \sys_get_temp_dir() . '/assets/builds',
             allowedBuildRoot: \sys_get_temp_dir(),
             baseUrl: '/assets/builds',
             scanPaths: [$fixturePath],
-            excludedPatterns: [],
             hashRoots: ['fixtures' => $fixturePath],
         );
         $reporter = new RecordingProgressReporter();
         $finder = new AstAssetBundleFinder(
-            new PhpFileCollector($configuration, new ExcludedPathMatcher($configuration)),
+            new PhpFileCollector($configuration),
             new PhpClassExtractor(),
             $reporter,
         );

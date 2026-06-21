@@ -53,12 +53,10 @@ final class BuildDirectoryRecreatorTest extends TemporaryDirectoryTestCase
     public function testRejectsMissingAllowedRoot(): void
     {
         $configuration = new StaticAssetsConfiguration(
-            projectRoot: $this->temporaryDirectory,
             targetPath: $this->temporaryDirectory . '/missing-root/builds',
             allowedBuildRoot: $this->temporaryDirectory . '/missing-root',
             baseUrl: '/assets',
             scanPaths: [$this->temporaryDirectory],
-            excludedPatterns: [],
             hashRoots: ['app' => $this->temporaryDirectory],
         );
 
@@ -95,12 +93,10 @@ final class BuildDirectoryRecreatorTest extends TemporaryDirectoryTestCase
     private function configuration(string $targetPath): StaticAssetsConfiguration
     {
         return new StaticAssetsConfiguration(
-            projectRoot: $this->temporaryDirectory,
             targetPath: $targetPath,
             allowedBuildRoot: $this->temporaryDirectory,
             baseUrl: '/assets',
             scanPaths: [$this->temporaryDirectory],
-            excludedPatterns: [],
             hashRoots: ['app' => $this->temporaryDirectory],
         );
     }

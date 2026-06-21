@@ -90,12 +90,10 @@ final class ContentAssetSourceHasherTest extends TemporaryDirectoryTestCase
     private function configuration(?array $hashRoots = null): StaticAssetsConfiguration
     {
         return new StaticAssetsConfiguration(
-            projectRoot: $this->temporaryDirectory,
             targetPath: $this->temporaryDirectory . '/builds',
             allowedBuildRoot: $this->temporaryDirectory,
             baseUrl: '/assets',
             scanPaths: [$this->temporaryDirectory],
-            excludedPatterns: [],
             hashRoots: $hashRoots ?? ['app' => $this->temporaryDirectory],
         );
     }

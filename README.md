@@ -34,7 +34,6 @@ $applicationPath = dirname(__DIR__);
 $vendorPath = $applicationPath . '/vendor';
 
 return new StaticAssetsConfiguration(
-    projectRoot: $applicationPath,
     targetPath: $applicationPath . '/web/assets/builds',
     allowedBuildRoot: $applicationPath . '/web/assets',
     baseUrl: '/assets/builds',
@@ -42,32 +41,15 @@ return new StaticAssetsConfiguration(
         $applicationPath,
         $vendorPath,
     ],
-    excludedPatterns: [
-        '.git/*',
-        'node_modules/*',
-        'runtime/*',
-        'web/assets/*',
-        'tests/*',
-        'docs/*',
-        'examples/*',
-        'vendor/bin/*',
-        'vendor/composer/*',
-        'vendor/phpunit/*',
-        'vendor/phpstan/*',
-        'vendor/codeception/*',
-    ],
     hashRoots: [
         'app' => $applicationPath,
         'vendor' => $vendorPath,
     ],
     manifestFileName: 'static-assets-manifest.json',
-    suggestionMinimumPhpFiles: 50,
 );
 ```
 
 ### Параметры
-
-`projectRoot` — абсолютный корень проекта, относительно которого сопоставляются `excludedPatterns` и формируются рекомендации анализатора.
 
 `targetPath` — каталог опубликованных ассетов. Перед публикацией он полностью пересоздаётся.
 
@@ -75,13 +57,9 @@ return new StaticAssetsConfiguration(
 
 `baseUrl` — публичный URL build-директории.
 
-`scanPaths` — каталоги поиска PHP-классов.
-
-`excludedPatterns` — glob-паттерны путей относительно `projectRoot`. Паттерн `vendor/phpstan/phpstan/src/*` затрагивает только эту конкретную директорию. Не используйте глобальные паттерны вроде `*/src/*`.
+`scanPaths` — каталоги поиска PHP-классов
 
 `hashRoots` — соответствие логических имён абсолютным корням. Абсолютный путь `/var/www/app/assets` может быть записан в manifest как `app/assets`.
-
-`suggestionMinimumPhpFiles` — минимальное количество PHP-файлов в каталоге, после которого анализатор предложит его для исключения. Параметр не ограничивает количество выводимых рекомендаций.
 
 ## Yii DI definitions
 
@@ -145,14 +123,6 @@ return [
 ```bash
 php yii asset-build/publish
 ```
-
-Анализ исключений:
-
-```bash
-php yii asset-build/analyze-exclusions
-```
-
-Анализатор выводит все найденные рекомендации и готовый блок для копирования в `excludedPatterns`
 
 ## Runtime AssetManager
 

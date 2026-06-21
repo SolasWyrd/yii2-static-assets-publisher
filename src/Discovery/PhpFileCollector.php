@@ -15,7 +15,6 @@ final readonly class PhpFileCollector
 {
     public function __construct(
         private StaticAssetsConfiguration $configuration,
-        private ExcludedPathMatcher $excludedPathMatcher,
     ) {}
 
     /** @return list<string> */
@@ -32,26 +31,11 @@ final readonly class PhpFileCollector
                 $root,
                 RecursiveDirectoryIterator::SKIP_DOTS,
             );
-
             $filterIterator = new RecursiveCallbackFilterIterator(
                 $directoryIterator,
-                function (SplFileInfo $file): bool {
-                    if (
-                        $this->excludedPathMatcher->matches(
-                            $file->getPathname(),
-                        )
-                    ) {
-                        return false;
-                    }
-
-                    return $file->isDir()
-                        || (
-                            $file->isFile()
-                            && $file->getExtension() === 'php'
-                        );
-                },
+                static fn (SplFileInfo $file): bool => $file->isDir()
+                    || ($file->isFile() && $file->getExtension() === 'php'),
             );
-
             $iterator = new RecursiveIteratorIterator(
                 $filterIterator,
                 RecursiveIteratorIterator::LEAVES_ONLY,

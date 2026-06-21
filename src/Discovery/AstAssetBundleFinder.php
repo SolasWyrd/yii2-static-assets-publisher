@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SolasWyrd\Yii2StaticAssets\Discovery;
 
+use Composer\Autoload\ClassLoader;
 use SolasWyrd\Yii2StaticAssets\Contract\AssetBundleFinderInterface;
 use SolasWyrd\Yii2StaticAssets\Contract\ProgressReporterInterface;
 use yii\web\AssetBundle;
@@ -40,14 +41,22 @@ final readonly class AstAssetBundleFinder implements AssetBundleFinderInterface
             );
         }
 
+        /** @var array<class-string<AssetBundle>, class-string<AssetBundle>> $bundleClasses */
         $bundleClasses = [];
+
+        /** @var array<string, string> $bundleFiles */
         $bundleFiles = [];
 
         foreach ($classes as $className => $class) {
-            if (
-                $class->abstract
-                || !$this->extendsAssetBundle($className, $classes)
-            ) {
+            if ($class->abstract) {
+                continue;
+            }
+
+            if (!$this->extendsAssetBundle($className, $classes)) {
+                continue;
+            }
+
+            if (!$this->isAutoloadableFromFile($className, $class->filePath)) {
                 continue;
             }
 
@@ -57,7 +66,7 @@ final readonly class AstAssetBundleFinder implements AssetBundleFinderInterface
         }
 
         \ksort($bundleClasses);
-        \sort($bundleFiles);
+        \ksort($bundleFiles);
 
         $this->progressReporter->finish(
             \sprintf(
@@ -68,7 +77,7 @@ final readonly class AstAssetBundleFinder implements AssetBundleFinderInterface
 
         return new AssetBundleDiscoveryResult(
             bundleClasses: \array_values($bundleClasses),
-            bundleFiles: $bundleFiles,
+            bundleFiles: \array_values($bundleFiles),
             scannedFileCount: $totalFiles,
         );
     }
@@ -110,6 +119,37 @@ final readonly class AstAssetBundleFinder implements AssetBundleFinderInterface
             $parentClassName,
             $classes,
             $visited,
+        );
+    }
+
+    private function isAutoloadableFromFile(
+        string $className,
+        string $expectedFilePath,
+    ): bool {
+        $expectedFilePath = $this->normalizePath($expectedFilePath);
+
+        foreach (ClassLoader::getRegisteredLoaders() as $classLoader) {
+            $resolvedFilePath = $classLoader->findFile($className);
+
+            if ($resolvedFilePath === false) {
+                continue;
+            }
+
+            return $this->normalizePath($resolvedFilePath)
+                === $expectedFilePath;
+        }
+
+        return false;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $resolvedPath = \realpath($path);
+
+        return \str_replace(
+            '\\',
+            '/',
+            $resolvedPath !== false ? $resolvedPath : $path,
         );
     }
 }

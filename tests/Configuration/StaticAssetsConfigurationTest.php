@@ -36,8 +36,6 @@ final class StaticAssetsConfigurationTest extends TestCase
     /** @return iterable<string, array{\Closure(): StaticAssetsConfiguration, string}> */
     public static function invalidConfigurationProvider(): iterable
     {
-        yield 'empty project root' => [static fn (): StaticAssetsConfiguration => self::createConfiguration(projectRoot: ''), 'Project root is required.'];
-
         yield 'empty target' => [static fn (): StaticAssetsConfiguration => self::createConfiguration(targetPath: ''), 'Target path is required.'];
 
         yield 'empty allowed root' => [static fn (): StaticAssetsConfiguration => self::createConfiguration(allowedBuildRoot: ''), 'Allowed build root is required.'];
@@ -53,36 +51,27 @@ final class StaticAssetsConfigurationTest extends TestCase
         yield 'manifest traversal' => [static fn (): StaticAssetsConfiguration => self::createConfiguration(manifestFileName: '../manifest.json'), 'Manifest file name must be a plain file name.'];
 
         yield 'manifest subdirectory' => [static fn (): StaticAssetsConfiguration => self::createConfiguration(manifestFileName: 'nested/manifest.json'), 'Manifest file name must be a plain file name.'];
-
-        yield 'invalid suggestion threshold' => [static fn (): StaticAssetsConfiguration => self::createConfiguration(suggestionMinimumPhpFiles: 0), 'Suggestion minimum PHP files must be positive.'];
     }
 
     /**
      * @param list<string>          $scanPaths
-     * @param list<string>          $excludedPatterns
      * @param array<string, string> $hashRoots
      */
     private static function createConfiguration(
-        string $projectRoot = '/app',
         string $targetPath = '/app/web/assets/builds',
         string $allowedBuildRoot = '/app/web/assets',
         string $baseUrl = '/assets/builds',
         array $scanPaths = ['/app'],
-        array $excludedPatterns = [],
         array $hashRoots = ['app' => '/app'],
         string $manifestFileName = 'static-assets-manifest.json',
-        int $suggestionMinimumPhpFiles = 50,
     ): StaticAssetsConfiguration {
         return new StaticAssetsConfiguration(
-            projectRoot: $projectRoot,
             targetPath: $targetPath,
             allowedBuildRoot: $allowedBuildRoot,
             baseUrl: $baseUrl,
             scanPaths: $scanPaths,
-            excludedPatterns: $excludedPatterns,
             hashRoots: $hashRoots,
             manifestFileName: $manifestFileName,
-            suggestionMinimumPhpFiles: $suggestionMinimumPhpFiles,
         );
     }
 }

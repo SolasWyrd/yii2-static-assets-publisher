@@ -59,12 +59,10 @@ final class JsonFileAssetManifestReaderTest extends TemporaryDirectoryTestCase
     private function configuration(): StaticAssetsConfiguration
     {
         return new StaticAssetsConfiguration(
-            projectRoot: $this->temporaryDirectory,
             targetPath: $this->temporaryDirectory . '/builds',
             allowedBuildRoot: $this->temporaryDirectory,
             baseUrl: '/assets',
             scanPaths: [$this->temporaryDirectory],
-            excludedPatterns: [],
             hashRoots: ['app' => $this->temporaryDirectory],
         );
     }
