@@ -1,6 +1,17 @@
 # Yii2 Static Assets Publisher
 
-Пакет автоматически находит все конкретные классы, наследующие `yii\web\AssetBundle`, и публикует их во время сборки приложения.
+Пакет автоматически находит классы `yii\web\AssetBundle`, публикует их ресурсы во время production-сборки и создаёт manifest с контентными хешами.
+
+[![Latest Stable Version](https://poser.pugx.org/solas-wyrd/yii2-static-assets-publisher/v)](https://packagist.org/packages/solas-wyrd/yii2-static-assets-publisher)
+[![Total Downloads](https://poser.pugx.org/solas-wyrd/yii2-static-assets-publisher/downloads)](https://packagist.org/packages/solas-wyrd/yii2-static-assets-publisher)
+[![Build status](https://github.com/SolasWyrd/yii2-static-assets-publisher/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/SolasWyrd/yii2-static-assets-publisher/actions/workflows/build.yml?query=branch%3Amain)
+[![Code Coverage](https://codecov.io/gh/SolasWyrd/yii2-static-assets-publisher/branch/main/graph/badge.svg)](https://codecov.io/gh/SolasWyrd/yii2-static-assets-publisher)
+[![Static analysis](https://github.com/SolasWyrd/yii2-static-assets-publisher/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/SolasWyrd/yii2-static-assets-publisher/actions/workflows/static.yml?query=branch%3Amain)
+
+## Требования
+
+- PHP 8.2 или выше;
+- Yii2 2.0.49 или выше;
 
 ## Установка
 
@@ -8,91 +19,282 @@
 composer require solas-wyrd/yii2-static-assets-publisher
 ```
 
-Перед публикацией рекомендуется сформировать оптимизированный Composer classmap:
+## Конфигурация
 
-```bash
-composer dump-autoload --optimize --classmap-authoritative
+Создайте файл, например `config/static-assets.php`:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use SolasWyrd\Yii2StaticAssets\Configuration\StaticAssetsConfiguration;
+
+$applicationPath = dirname(__DIR__);
+$vendorPath = $applicationPath . '/vendor';
+
+return new StaticAssetsConfiguration(
+    projectRoot: $applicationPath,
+    targetPath: $applicationPath . '/web/assets/builds',
+    allowedBuildRoot: $applicationPath . '/web/assets',
+    baseUrl: '/assets/builds',
+    scanPaths: [
+        $applicationPath,
+        $vendorPath,
+    ],
+    excludedPatterns: [
+        '.git/*',
+        'node_modules/*',
+        'runtime/*',
+        'web/assets/*',
+        'tests/*',
+        'docs/*',
+        'examples/*',
+        'vendor/bin/*',
+        'vendor/composer/*',
+        'vendor/phpunit/*',
+        'vendor/phpstan/*',
+        'vendor/codeception/*',
+    ],
+    hashRoots: [
+        'app' => $applicationPath,
+        'vendor' => $vendorPath,
+    ],
+    manifestFileName: 'static-assets-manifest.json',
+    suggestionMinimumPhpFiles: 50,
+);
 ```
 
-## Интеграция
+### Параметры
 
-Готовый Yii2 console controller находится в:
+`projectRoot` — абсолютный корень проекта, относительно которого сопоставляются `excludedPatterns` и формируются рекомендации анализатора.
 
-```text
-examples/AssetBuildController.php
+`targetPath` — каталог опубликованных ассетов. Перед публикацией он полностью пересоздаётся.
+
+`allowedBuildRoot` — безопасный родительский каталог. `targetPath` обязан находиться внутри него. Это защищает от удаления произвольного пути и выхода через symlink.
+
+`baseUrl` — публичный URL build-директории.
+
+`scanPaths` — каталоги поиска PHP-классов.
+
+`excludedPatterns` — glob-паттерны путей относительно `projectRoot`. Паттерн `vendor/phpstan/phpstan/src/*` затрагивает только эту конкретную директорию. Не используйте глобальные паттерны вроде `*/src/*`.
+
+`hashRoots` — соответствие логических имён абсолютным корням. Абсолютный путь `/var/www/app/assets` может быть записан в manifest как `app/assets`.
+
+`suggestionMinimumPhpFiles` — минимальное количество PHP-файлов в каталоге, после которого анализатор предложит его для исключения. Параметр не ограничивает количество выводимых рекомендаций.
+
+## Yii DI definitions
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use SolasWyrd\Yii2StaticAssets\Configuration\StaticAssetsConfiguration;
+use SolasWyrd\Yii2StaticAssets\Contract\AssetBundleFinderInterface;
+use SolasWyrd\Yii2StaticAssets\Contract\AssetBundlePublisherInterface;
+use SolasWyrd\Yii2StaticAssets\Contract\AssetManifestReaderInterface;
+use SolasWyrd\Yii2StaticAssets\Contract\AssetManifestWriterInterface;
+use SolasWyrd\Yii2StaticAssets\Contract\AssetSourceHasherInterface;
+use SolasWyrd\Yii2StaticAssets\Contract\ProgressReporterInterface;
+use SolasWyrd\Yii2StaticAssets\Discovery\AstAssetBundleFinder;
+use SolasWyrd\Yii2StaticAssets\Hash\ContentAssetSourceHasher;
+use SolasWyrd\Yii2StaticAssets\Manifest\JsonFileAssetManifestReader;
+use SolasWyrd\Yii2StaticAssets\Manifest\JsonFileAssetManifestWriter;
+use SolasWyrd\Yii2StaticAssets\Publication\YiiAssetBundlePublisher;
+use SolasWyrd\Yii2StaticAssets\Reporting\ConsoleProgressReporter;
+
+/** @var StaticAssetsConfiguration $configuration */
+$configuration = require __DIR__ . '/static-assets.php';
+
+return [
+    StaticAssetsConfiguration::class =>
+        static fn (): StaticAssetsConfiguration => $configuration,
+
+    AssetBundleFinderInterface::class => AstAssetBundleFinder::class,
+    AssetBundlePublisherInterface::class => YiiAssetBundlePublisher::class,
+    AssetSourceHasherInterface::class => ContentAssetSourceHasher::class,
+    AssetManifestReaderInterface::class => JsonFileAssetManifestReader::class,
+    AssetManifestWriterInterface::class => JsonFileAssetManifestWriter::class,
+    ProgressReporterInterface::class => ConsoleProgressReporter::class,
+];
 ```
 
-Скопируйте его в `commands/AssetBuildController.php` и при необходимости скорректируйте исключения.
+## Console controller
 
-Запуск:
+Добавьте контроллер пакета в console-конфигурацию:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use SolasWyrd\Yii2StaticAssets\Yii\AssetBuildController;
+
+return [
+    'controllerMap' => [
+        'asset-build' => [
+            'class' => AssetBuildController::class,
+        ],
+    ],
+];
+```
+
+Публикация:
 
 ```bash
 php yii asset-build/publish
 ```
 
-## Docker
+Анализ исключений:
 
-```dockerfile
-RUN composer dump-autoload --optimize --classmap-authoritative \
-    && php yii asset-build/publish
+```bash
+php yii asset-build/analyze-exclusions
 ```
 
-## Автоматическое версионирование
+Анализатор выводит все найденные рекомендации и готовый блок для копирования в `excludedPatterns`
 
-`ContentAssetPathHasher` строит имя publish-директории из:
+## Runtime AssetManager
 
-- логического пути source-каталога;
-- относительных имён файлов;
-- содержимого каждого файла.
-
-Hash автоматически меняется, когда файл:
-
-- добавлен;
-- удалён;
-- переименован;
-- изменён.
-
-Время изменения файла не используется, поэтому результат воспроизводим между Docker-сборками. Вычисленный hash кэшируется в памяти процесса.
-
-Тот же `ContentAssetPathHasher` необходимо использовать в runtime-конфигурации Yii `assetManager`, чтобы web-приложение генерировало те же URL, что и build-команда.
-
-Пример:
+В web-конфигурации используйте manifest вместо повторного вычисления хешей:
 
 ```php
-use SolasWyrd\Yii2StaticAssets\Hash\ContentAssetPathHasher;
+<?php
 
-$hasher = new ContentAssetPathHasher([
-    'app' => (string) Yii::getAlias('@app'),
-    'vendor' => (string) Yii::getAlias('@vendor'),
-]);
+declare(strict_types=1);
+
+use SolasWyrd\Yii2StaticAssets\Configuration\StaticAssetsConfiguration;
+use SolasWyrd\Yii2StaticAssets\Hash\ContentAssetSourceHasher;
+use SolasWyrd\Yii2StaticAssets\Hash\ManifestAssetPathHasher;
+use SolasWyrd\Yii2StaticAssets\Manifest\JsonFileAssetManifestReader;
+use yii\web\AssetManager;
+
+/** @var StaticAssetsConfiguration $configuration */
+$configuration = require __DIR__ . '/static-assets.php';
+
+$manifestHasher = new ManifestAssetPathHasher(
+    new JsonFileAssetManifestReader($configuration),
+    new ContentAssetSourceHasher($configuration),
+);
 
 return [
-    'basePath' => '@webroot/assets/builds',
-    'baseUrl' => '/assets/builds',
-    'appendTimestamp' => false,
-    'linkAssets' => false,
-    'forceCopy' => false,
-    'hashCallback' => $hasher(...),
+    'components' => [
+        'assetManager' => [
+            'class' => AssetManager::class,
+            'basePath' => $configuration->targetPath,
+            'baseUrl' => $configuration->baseUrl,
+            'appendTimestamp' => false,
+            'linkAssets' => false,
+            'forceCopy' => false,
+            'hashCallback' => $manifestHasher(...),
+        ],
+    ],
 ];
 ```
 
-## Поиск AssetBundle
+Если manifest отсутствует или не содержит source-путь, runtime завершится с исключением. Для production это правильное fail-fast поведение: неполная сборка не маскируется пересчётом файлов.
 
-Поиск выполняется в два этапа:
+## Замена реализаций
 
-1. Быстрый режим читает `vendor/composer/autoload_classmap.php`.
-2. Если classmap отсутствует или пуст, выполняется рекурсивный обход заданных корней.
+### Собственный поиск AssetBundle
 
-Строится граф наследования, поэтому обнаруживаются классы, наследующие промежуточные базовые AssetBundle. Абстрактные классы не публикуются.
+```php
+use SolasWyrd\Yii2StaticAssets\Contract\AssetBundleFinderInterface;
 
-## Безопасность
+return [
+    AssetBundleFinderInterface::class => ProjectAssetBundleFinder::class,
+];
+```
 
-Перед публикацией целевая директория полностью удаляется и создаётся заново. `BuildDirectory` разрешает только путь вида `.../assets/builds`.
+Это полезно, если проект использует собственный registry, ограниченные namespaces или предварительно сформированный classmap.
 
-Пакет рассчитан на запуск во время Docker build или другого build pipeline. При ошибке команда должна вернуть ненулевой exit code, чтобы образ не был опубликован.
+### Собственная публикация
 
-## Ограничения
+```php
+use SolasWyrd\Yii2StaticAssets\Contract\AssetBundlePublisherInterface;
 
-- Динамически объявленные через `eval()` классы не поддерживаются.
-- Символические ссылки внутри source-каталогов не хешируются и не обходятся.
-- Оптимальный режим требует `composer dump-autoload -o`.
+return [
+    AssetBundlePublisherInterface::class => CdnAssetBundlePublisher::class,
+];
+```
+
+Реализация может публиковать в shared volume, объектное хранилище или применять дополнительные права и post-processing.
+
+### Другое хранилище manifest
+
+```php
+use SolasWyrd\Yii2StaticAssets\Contract\AssetManifestReaderInterface;
+use SolasWyrd\Yii2StaticAssets\Contract\AssetManifestWriterInterface;
+
+return [
+    AssetManifestReaderInterface::class => RedisAssetManifestReader::class,
+    AssetManifestWriterInterface::class => RedisAssetManifestWriter::class,
+];
+```
+
+### Запуск без консольного прогресса
+
+```php
+use SolasWyrd\Yii2StaticAssets\Contract\ProgressReporterInterface;
+use SolasWyrd\Yii2StaticAssets\Reporting\NullProgressReporter;
+
+return [
+    ProgressReporterInterface::class => NullProgressReporter::class,
+];
+```
+
+## Manifest
+
+Пример `static-assets-manifest.json`:
+
+```json
+{
+    "app/assets": "f4d7c8a1b2e39d10",
+    "vendor/yiisoft/yii2/assets": "91f8a4bb6c2280e1"
+}
+```
+
+Изменение содержимого или имени файла меняет хеш и URL опубликованного ресурса. Неизменённый контент сохраняет прежний URL.
+
+## Docker
+
+Публикуйте ассеты после установки зависимостей и копирования исходников:
+
+```dockerfile
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --prefer-dist \
+    --no-interaction \
+    --no-progress
+
+COPY . .
+
+RUN composer dump-autoload \
+        --optimize \
+        --classmap-authoritative \
+    && php yii asset-build/publish
+```
+
+## Разработка пакета
+
+```bash
+composer install
+composer validate --strict
+composer test
+composer analyse
+composer cs-check
+```
+
+Автоматическое исправление code style:
+
+```bash
+composer cs-fix
+```
+
+## Лицензия
+
+MIT.

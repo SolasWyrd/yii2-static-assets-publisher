@@ -6,6 +6,4 @@ namespace SolasWyrd\Yii2StaticAssets\Exception;
 
 use RuntimeException;
 
-class AssetPublicationException extends RuntimeException
-{
-}
+final class AssetPublicationException extends RuntimeException {}

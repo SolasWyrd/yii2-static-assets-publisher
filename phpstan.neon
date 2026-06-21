@@ -1,5 +1,7 @@
 parameters:
-    level: 8
+    level: max
     paths:
         - src
         - tests
+    bootstrapFiles:
+        - vendor/yiisoft/yii2/Yii.php
